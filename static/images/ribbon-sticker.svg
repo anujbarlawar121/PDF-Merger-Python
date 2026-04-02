@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 180" role="img" aria-labelledby="title">
+  <title id="title">PDF club ribbon sticker</title>
+  <path d="M22 58h216l-26 36 26 36H22L48 94z" fill="#29446d"/>
+  <path d="M40 76h180v36H40z" fill="#d8b15c"/>
+  <path d="M62 128l-18 34 32-12 20 20 8-42z" fill="#8b3a32"/>
+  <path d="M198 128l18 34-32-12-20 20-8-42z" fill="#8b3a32"/>
+  <text x="130" y="99" text-anchor="middle" font-size="24" font-family="Trebuchet MS, sans-serif" fill="#1b2940" letter-spacing="4">PDF CLUB</text>
+</svg>

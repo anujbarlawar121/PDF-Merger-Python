@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+from io import BytesIO
+import os
+import shutil
+import tempfile
+import uuid
+from pathlib import Path
+
+from flask import (
+    Flask,
+    after_this_request,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+from hello_pdf import (
+    PdfToolError,
+    add_pages,
+    delete_pages,
+    ensure_pdf_filename,
+    extract_pages,
+    get_pdf_page_count,
+    images_to_pdf,
+    merge_pdfs,
+    parse_page_selection,
+)
+
+
+BASE_DIR = Path(__file__).resolve().parent
+TMP_ROOT = BASE_DIR / "tmp"
+PDF_EXTENSIONS = {".pdf"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
+MAX_UPLOAD_SIZE = 64 * 1024 * 1024
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "classic-pdf-lounge")
+    app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_SIZE
+
+    TMP_ROOT.mkdir(parents=True, exist_ok=True)
+
+    @app.get("/")
+    def index():
+        active_tool = request.args.get("tool", "merge")
+        return render_template("index.html", active_tool=active_tool)
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}, 200
+
+    @app.post("/merge")
+    def merge_route():
+        try:
+            uploads = [upload for upload in request.files.getlist("pdfs") if upload and upload.filename]
+            if len(uploads) < 2:
+                raise PdfToolError("Upload at least two PDF files to merge.")
+
+            workspace = _make_workspace()
+            saved_files = [_save_upload(upload, workspace, PDF_EXTENSIONS) for upload in uploads]
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "merged-classic.pdf")
+            output_path = workspace / output_name
+            merge_pdfs(saved_files, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("merge", str(error))
+
+    @app.post("/delete-pages")
+    def delete_pages_route():
+        try:
+            workspace = _make_workspace()
+            pdf_upload = _require_upload(request.files.get("pdf"), PDF_EXTENSIONS, "a PDF to trim")
+            pdf_path = _save_upload(pdf_upload, workspace, PDF_EXTENSIONS)
+            page_count = get_pdf_page_count(pdf_path)
+            pages_to_delete = parse_page_selection(request.form.get("pages", ""), page_count)
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "trimmed-classic.pdf")
+            output_path = workspace / output_name
+            delete_pages(pdf_path, pages_to_delete, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("delete", str(error))
+
+    @app.post("/extract-pages")
+    def extract_pages_route():
+        try:
+            workspace = _make_workspace()
+            pdf_upload = _require_upload(request.files.get("pdf"), PDF_EXTENSIONS, "a PDF to extract from")
+            pdf_path = _save_upload(pdf_upload, workspace, PDF_EXTENSIONS)
+            page_count = get_pdf_page_count(pdf_path)
+            pages_to_extract = parse_page_selection(request.form.get("pages", ""), page_count)
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "extracted-classic.pdf")
+            output_path = workspace / output_name
+            extract_pages(pdf_path, pages_to_extract, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("extract", str(error))
+
+    @app.post("/add-pages")
+    def add_pages_route():
+        try:
+            workspace = _make_workspace()
+            base_upload = _require_upload(request.files.get("base_pdf"), PDF_EXTENSIONS, "a base PDF")
+            extra_upload = _require_upload(request.files.get("extra_pdf"), PDF_EXTENSIONS, "a second PDF")
+            base_path = _save_upload(base_upload, workspace, PDF_EXTENSIONS)
+            extra_path = _save_upload(extra_upload, workspace, PDF_EXTENSIONS)
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "expanded-classic.pdf")
+            output_path = workspace / output_name
+            add_pages(base_path, extra_path, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("add", str(error))
+
+    @app.post("/images-to-pdf")
+    def images_to_pdf_route():
+        try:
+            uploads = [upload for upload in request.files.getlist("images") if upload and upload.filename]
+            if not uploads:
+                raise PdfToolError("Upload one or more images to convert.")
+
+            workspace = _make_workspace()
+            saved_images = [_save_upload(upload, workspace, IMAGE_EXTENSIONS) for upload in uploads]
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "gallery-classic.pdf")
+            output_path = workspace / output_name
+            images_to_pdf(saved_images, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("images", str(error))
+
+    @app.errorhandler(413)
+    def request_entity_too_large(_error):
+        flash("The upload is too large. Keep the total request under 64 MB.", "error")
+        return redirect(url_for("index"))
+
+    return app
+
+
+def _make_workspace() -> Path:
+    workspace = Path(tempfile.mkdtemp(prefix="classic-pdf-", dir=TMP_ROOT))
+
+    @after_this_request
+    def cleanup(response):
+        shutil.rmtree(workspace, ignore_errors=True)
+        return response
+
+    return workspace
+
+
+def _require_upload(upload, allowed_extensions: set[str], label: str):
+    if upload is None or not upload.filename:
+        raise PdfToolError(f"Please choose {label}.")
+
+    suffix = Path(upload.filename).suffix.lower()
+    if suffix not in allowed_extensions:
+        allowed_list = ", ".join(sorted(allowed_extensions))
+        raise PdfToolError(f"{upload.filename} is not supported. Allowed types: {allowed_list}.")
+
+    return upload
+
+
+def _save_upload(upload, workspace: Path, allowed_extensions: set[str]) -> Path:
+    _require_upload(upload, allowed_extensions, "a file")
+    cleaned_name = secure_filename(upload.filename) or f"upload-{uuid.uuid4().hex}"
+    destination = workspace / f"{uuid.uuid4().hex[:10]}-{cleaned_name}"
+    upload.save(destination)
+    return destination
+
+
+def _download_file(path: Path, download_name: str):
+    return send_file(
+        BytesIO(path.read_bytes()),
+        as_attachment=True,
+        download_name=download_name,
+        mimetype="application/pdf",
+    )
+
+
+def _redirect_with_error(tool: str, message: str):
+    flash(message, "error")
+    return redirect(url_for("index", tool=tool))
+
+
+app = create_app()
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

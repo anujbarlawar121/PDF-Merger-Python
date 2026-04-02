@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="hero-section">
+    <div class="hero-copy">
+        <p class="eyebrow">PDF Atelier</p>
+        <h1>Turn your PDF tools into a polished desktop-style web experience.</h1>
+        <p class="hero-text">
+            Merge documents, trim away extra pages, extract key sections, append new pages,
+            and convert image collections into elegant PDFs from one Flask-powered studio.
+        </p>
+        <div class="hero-actions">
+            <a class="button button-primary" href="#toolkit">Open the toolkit</a>
+            <a class="button button-secondary" href="#showcase">Explore the studio</a>
+        </div>
+        <div class="sticker-row">
+            <img class="sticker tilt-left" src="{{ url_for('static', filename='images/stamp-sticker.svg') }}" alt="Stamp sticker">
+            <img class="sticker tilt-right" src="{{ url_for('static', filename='images/ribbon-sticker.svg') }}" alt="Ribbon sticker">
+            <img class="sticker tilt-left" src="{{ url_for('static', filename='images/scissor-sticker.svg') }}" alt="Scissor sticker">
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="hero-frame">
+            <img src="{{ url_for('static', filename='images/classic-library.svg') }}" alt="Decorative PDF studio illustration">
+        </div>
+        <div class="floating-note note-gold">
+            <span>Quick results</span>
+            <strong>Downloads start as soon as the file is ready.</strong>
+        </div>
+        <div class="floating-note note-navy">
+            <span>Neat inputs</span>
+            <strong>Each workflow has its own clean, focused form.</strong>
+        </div>
+    </div>
+</header>
+
+<section class="stats-strip" id="showcase">
+    <article class="stat-card">
+        <h2>5 focused tools</h2>
+        <p>Every feature from your original scripts now has a browser interface.</p>
+    </article>
+    <article class="stat-card">
+        <h2>Classic colour palette</h2>
+        <p>Parchment, navy, oxblood, and antique gold give the app a rich look.</p>
+    </article>
+    <article class="stat-card media-card">
+        <div class="mini-gallery">
+            <figure class="gif-card">
+                <img src="{{ url_for('static', filename='images/paper-dance.gif') }}" alt="Animated paper ribbon">
+                <figcaption>Paper ribbon</figcaption>
+            </figure>
+            <figure class="gif-card">
+                <img src="{{ url_for('static', filename='images/seal-bounce.gif') }}" alt="Animated approval seal">
+                <figcaption>Approval seal</figcaption>
+            </figure>
+        </div>
+    </article>
+</section>
+
+<main class="content-grid">
+    <section class="toolkit-panel" id="toolkit">
+        <div class="section-heading">
+            <p class="eyebrow">PDF Workbench</p>
+            <h2>Choose a tool and create a file in one step.</h2>
+            <p>
+                Upload your files, enter an optional output name, and download the finished PDF.
+                Page fields accept numbers and ranges like <code>1, 3-5, 8</code>.
+            </p>
+        </div>
+
+        <div class="tab-strip" role="tablist" aria-label="PDF tools">
+            <button class="tab-button" type="button" data-tab-target="merge">Merge PDFs</button>
+            <button class="tab-button" type="button" data-tab-target="delete">Delete Pages</button>
+            <button class="tab-button" type="button" data-tab-target="extract">Extract Pages</button>
+            <button class="tab-button" type="button" data-tab-target="add">Add Pages</button>
+            <button class="tab-button" type="button" data-tab-target="images">Images to PDF</button>
+        </div>
+
+        <article class="tool-card" data-tool-panel="merge">
+            <div class="tool-copy">
+                <p class="tool-label">Merge PDFs</p>
+                <h3>Blend multiple documents into one clean file.</h3>
+                <p>
+                    Great for combining notes, resumes, scanned paperwork, project reports, or class handouts.
+                    The browser keeps the upload order, so choose the PDFs in the sequence you want.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload two or more PDF files.</li>
+                    <li>Keep your preferred order while selecting files.</li>
+                    <li>Download one merged file immediately.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('merge_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>PDF files</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="pdfs" accept=".pdf,application/pdf" multiple required>
+                        <span class="file-picker-title">Choose two or more PDFs</span>
+                        <span class="file-picker-text" data-file-summary>No files selected yet.</span>
+                    </label>
+                </div>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="merged-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit">Merge and download</button>
+            </form>
+        </article>
+
+        <article class="tool-card" data-tool-panel="delete">
+            <div class="tool-copy">
+                <p class="tool-label">Delete Pages</p>
+                <h3>Trim away the pages you do not want.</h3>
+                <p>
+                    Use this when a PDF has blank scans, duplicate pages, or appendix pages that should not stay in the final version.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload one PDF.</li>
+                    <li>Enter pages like <code>2, 4-6</code>.</li>
+                    <li>Download the cleaned PDF.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('delete_pages_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>PDF file</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="pdf" accept=".pdf,application/pdf" required>
+                        <span class="file-picker-title">Choose a PDF to trim</span>
+                        <span class="file-picker-text" data-file-summary>No file selected yet.</span>
+                    </label>
+                </div>
+                <label class="field-group">
+                    <span>Pages to delete</span>
+                    <input type="text" name="pages" placeholder="2, 4-6" required>
+                </label>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="trimmed-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit">Delete pages</button>
+            </form>
+        </article>
+
+        <article class="tool-card" data-tool-panel="extract">
+            <div class="tool-copy">
+                <p class="tool-label">Extract Pages</p>
+                <h3>Pull out just the pages you need.</h3>
+                <p>
+                    Handy for taking chapter highlights, payment receipts, selected lecture notes, or just the signed pages from a long document.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload a source PDF.</li>
+                    <li>Choose pages and ranges to keep.</li>
+                    <li>Download a smaller focused document.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('extract_pages_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>PDF file</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="pdf" accept=".pdf,application/pdf" required>
+                        <span class="file-picker-title">Choose a PDF to extract from</span>
+                        <span class="file-picker-text" data-file-summary>No file selected yet.</span>
+                    </label>
+                </div>
+                <label class="field-group">
+                    <span>Pages to extract</span>
+                    <input type="text" name="pages" placeholder="1, 3-5, 8" required>
+                </label>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="extracted-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit">Extract pages</button>
+            </form>
+        </article>
+
+        <article class="tool-card" data-tool-panel="add">
+            <div class="tool-copy">
+                <p class="tool-label">Add Pages</p>
+                <h3>Append one PDF after another in seconds.</h3>
+                <p>
+                    Use this to add annexures, supporting documents, covers, certificates, or reference pages to the end of a base file.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload a base PDF and an extra PDF.</li>
+                    <li>The second file is appended after the first.</li>
+                    <li>Download the expanded version.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('add_pages_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>Base PDF</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="base_pdf" accept=".pdf,application/pdf" required>
+                        <span class="file-picker-title">Choose the main PDF</span>
+                        <span class="file-picker-text" data-file-summary>No file selected yet.</span>
+                    </label>
+                </div>
+                <div class="field-group">
+                    <span>Extra PDF</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="extra_pdf" accept=".pdf,application/pdf" required>
+                        <span class="file-picker-title">Choose the PDF to append</span>
+                        <span class="file-picker-text" data-file-summary>No file selected yet.</span>
+                    </label>
+                </div>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="expanded-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit">Add pages</button>
+            </form>
+        </article>
+
+        <article class="tool-card" data-tool-panel="images">
+            <div class="tool-copy">
+                <p class="tool-label">Images to PDF</p>
+                <h3>Turn image sets into a single PDF gallery.</h3>
+                <p>
+                    Convert scans, notes, drawings, screenshots, or photo references into one PDF that is easier to share and archive.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload one or more images.</li>
+                    <li>Transparent images are placed on white paper.</li>
+                    <li>Download a fresh PDF album.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('images_to_pdf_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>Image files</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="images" accept="image/*" multiple required>
+                        <span class="file-picker-title">Choose images to convert</span>
+                        <span class="file-picker-text" data-file-summary>No files selected yet.</span>
+                    </label>
+                </div>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="gallery-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit">Convert to PDF</button>
+            </form>
+        </article>
+    </section>
+
+    <aside class="info-panel">
+        <div class="info-card">
+            <p class="eyebrow">Why this feels better</p>
+            <h2>From plain scripts to a proper application.</h2>
+            <p>
+                Your original Python logic is still the engine here. It is now wrapped in Flask routes,
+                styled forms, file validation, helpful messages, and a richer classic visual theme.
+            </p>
+        </div>
+        <div class="info-card">
+            <p class="eyebrow">Quick tips</p>
+            <ul class="detail-list">
+                <li>Use commas or ranges for page fields.</li>
+                <li>Leave output names blank to use the suggested defaults.</li>
+                <li>Uploads are handled in temporary folders for cleaner runs.</li>
+                <li>The app supports PDFs plus common image formats.</li>
+            </ul>
+        </div>
+        <div class="info-card note-card">
+            <p class="eyebrow">Classic mood</p>
+            <p>
+                Sticker-like badges, layered paper textures, animated GIFs, and a warm editorial palette
+                help the app feel more like a crafted studio than a plain utility page.
+            </p>
+        </div>
+    </aside>
+</main>
+{% endblock %}

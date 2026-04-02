@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title">
+  <title id="title">Merge magic sticker</title>
+  <circle cx="110" cy="110" r="96" fill="#f9f0dc" stroke="#8b3a32" stroke-width="10"/>
+  <circle cx="110" cy="110" r="76" fill="#29446d" stroke="#d6ae5f" stroke-width="8"/>
+  <path d="M74 124l22-22 18 18 32-32 14 14-46 46z" fill="#f8eed9"/>
+  <text x="110" y="64" text-anchor="middle" font-size="18" font-family="Trebuchet MS, sans-serif" fill="#f9f0dc" letter-spacing="3">MERGE</text>
+  <text x="110" y="158" text-anchor="middle" font-size="18" font-family="Trebuchet MS, sans-serif" fill="#f9f0dc" letter-spacing="3">MAGIC</text>
+</svg>
