@@ -607,6 +607,12 @@ h3 {
     font-size: 0.94rem;
 }
 
+.field-help {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: rgba(32, 45, 60, 0.7);
+}
+
 .field-group input[type="text"] {
     width: 100%;
     min-height: 52px;
@@ -667,6 +673,14 @@ h3 {
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.submit-button:disabled,
+.submit-button.is-loading {
+    cursor: wait;
+    opacity: 0.86;
+    transform: none;
+    box-shadow: 0 8px 18px rgba(36, 56, 77, 0.16);
 }
 
 .info-panel {

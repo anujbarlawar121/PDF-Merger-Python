@@ -144,7 +144,7 @@
                     <span>Output file name</span>
                     <input type="text" name="output_name" placeholder="merged-classic.pdf">
                 </label>
-                <button class="submit-button" type="submit">Merge and download</button>
+                <button class="submit-button" type="submit" data-loading-label="Merging PDFs...">Merge and download</button>
             </form>
         </article>
 
@@ -179,7 +179,7 @@
                     <span>Output file name</span>
                     <input type="text" name="output_name" placeholder="trimmed-classic.pdf">
                 </label>
-                <button class="submit-button" type="submit">Delete pages</button>
+                <button class="submit-button" type="submit" data-loading-label="Deleting pages...">Delete pages</button>
             </form>
         </article>
 
@@ -214,7 +214,7 @@
                     <span>Output file name</span>
                     <input type="text" name="output_name" placeholder="extracted-classic.pdf">
                 </label>
-                <button class="submit-button" type="submit">Extract pages</button>
+                <button class="submit-button" type="submit" data-loading-label="Extracting pages...">Extract pages</button>
             </form>
         </article>
 
@@ -253,7 +253,7 @@
                     <span>Output file name</span>
                     <input type="text" name="output_name" placeholder="expanded-classic.pdf">
                 </label>
-                <button class="submit-button" type="submit">Add pages</button>
+                <button class="submit-button" type="submit" data-loading-label="Adding pages...">Add pages</button>
             </form>
         </article>
 
@@ -275,16 +275,17 @@
                 <div class="field-group">
                     <span>Image files</span>
                     <label class="file-picker" data-file-picker>
-                        <input type="file" name="images" accept="image/*" multiple required>
+                        <input type="file" name="images" accept=".png,.jpg,.jpeg,.bmp,.gif,.tif,.tiff,.webp,image/png,image/jpeg,image/bmp,image/gif,image/tiff,image/webp" multiple required>
                         <span class="file-picker-title">Choose images to convert</span>
                         <span class="file-picker-text" data-file-summary>No files selected yet.</span>
                     </label>
+                    <span class="field-help">Supported formats: PNG, JPG, JPEG, BMP, GIF, TIF, TIFF, and WEBP.</span>
                 </div>
                 <label class="field-group">
                     <span>Output file name</span>
                     <input type="text" name="output_name" placeholder="gallery-classic.pdf">
                 </label>
-                <button class="submit-button" type="submit">Convert to PDF</button>
+                <button class="submit-button" type="submit" data-loading-label="Converting images...">Convert to PDF</button>
             </form>
         </article>
     </section>

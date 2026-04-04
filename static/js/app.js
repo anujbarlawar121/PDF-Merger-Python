@@ -40,6 +40,20 @@ document.querySelectorAll("[data-file-picker]").forEach((picker) => {
     input.addEventListener("change", updateSummary);
 });
 
+document.querySelectorAll(".tool-form").forEach((form) => {
+    form.addEventListener("submit", () => {
+        const button = form.querySelector(".submit-button");
+        if (!button) {
+            return;
+        }
+
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = button.dataset.loadingLabel || "Working...";
+        button.disabled = true;
+        button.classList.add("is-loading");
+    });
+});
+
 const initialTool = body.dataset.activeTool || "merge";
 const hasInitialPanel = tabPanels.some((panel) => panel.dataset.toolPanel === initialTool);
 activateTool(hasInitialPanel ? initialTool : "merge");
