@@ -33,7 +33,7 @@ from hello_pdf import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-TMP_ROOT = BASE_DIR / "tmp"
+TMP_ROOT = Path(os.environ.get("PDF_ATELIER_TMP_DIR", tempfile.gettempdir())) / "pdf-atelier"
 PDF_EXTENSIONS = {".pdf"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
 MAX_UPLOAD_SIZE = 64 * 1024 * 1024
@@ -70,6 +70,9 @@ def create_app() -> Flask:
             return _download_file(output_path, output_name)
         except PdfToolError as error:
             return _redirect_with_error("merge", str(error))
+        except Exception as error:
+            app.logger.exception("Merge PDFs failed: %s", error)
+            return _redirect_with_error("merge", "Something went wrong while merging the PDFs.")
 
     @app.post("/delete-pages")
     def delete_pages_route():
@@ -85,6 +88,9 @@ def create_app() -> Flask:
             return _download_file(output_path, output_name)
         except PdfToolError as error:
             return _redirect_with_error("delete", str(error))
+        except Exception as error:
+            app.logger.exception("Delete pages failed: %s", error)
+            return _redirect_with_error("delete", "Something went wrong while deleting the pages.")
 
     @app.post("/extract-pages")
     def extract_pages_route():
@@ -100,6 +106,9 @@ def create_app() -> Flask:
             return _download_file(output_path, output_name)
         except PdfToolError as error:
             return _redirect_with_error("extract", str(error))
+        except Exception as error:
+            app.logger.exception("Extract pages failed: %s", error)
+            return _redirect_with_error("extract", "Something went wrong while extracting the pages.")
 
     @app.post("/add-pages")
     def add_pages_route():
@@ -115,6 +124,9 @@ def create_app() -> Flask:
             return _download_file(output_path, output_name)
         except PdfToolError as error:
             return _redirect_with_error("add", str(error))
+        except Exception as error:
+            app.logger.exception("Add pages failed: %s", error)
+            return _redirect_with_error("add", "Something went wrong while adding the pages.")
 
     @app.post("/images-to-pdf")
     def images_to_pdf_route():
@@ -131,6 +143,12 @@ def create_app() -> Flask:
             return _download_file(output_path, output_name)
         except PdfToolError as error:
             return _redirect_with_error("images", str(error))
+        except Exception as error:
+            app.logger.exception("Images to PDF failed: %s", error)
+            return _redirect_with_error(
+                "images",
+                "Something went wrong while converting the images. Please try JPG or PNG files.",
+            )
 
     @app.errorhandler(413)
     def request_entity_too_large(_error):
