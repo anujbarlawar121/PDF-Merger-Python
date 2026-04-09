@@ -13,6 +13,7 @@
         <span class="status-pill">Classic Colours</span>
         <span class="status-pill">Modern Workflow</span>
         <span class="status-pill">PDF Ready</span>
+        <span class="status-pill">QR Studio</span>
     </div>
 </section>
 
@@ -22,13 +23,16 @@
         <h1>Modern PDF tools with a retro studio feel.</h1>
         <p class="hero-text">
             Merge files, remove pages, pull out key sections, append documents,
-            and turn image batches into polished PDFs from one classic-looking workbench.
+            turn image batches into polished PDFs, generate QR downloads, and convert supported files
+            without leaving one classic-looking workbench.
         </p>
         <div class="hero-chip-row">
             <span class="hero-chip">Merge packs</span>
             <span class="hero-chip">Trim pages</span>
             <span class="hero-chip">Extract sections</span>
             <span class="hero-chip">Convert images</span>
+            <span class="hero-chip">Make QR codes</span>
+            <span class="hero-chip">Convert files</span>
         </div>
         <div class="hero-actions">
             <a class="button button-primary" href="#toolkit">Open the workbench</a>
@@ -51,7 +55,7 @@
                 <div class="stack-sheet sheet-three">
                     <span class="sheet-badge">PDF</span>
                     <strong>Drop files in, download the result fast.</strong>
-                    <p>Built for merging, cleaning, extracting, and converting documents in one place.</p>
+                    <p>Built for merging, cleaning, converting, and generating QR-ready document exports in one place.</p>
                 </div>
             </div>
         </div>
@@ -61,7 +65,7 @@
         </div>
         <div class="floating-note note-navy">
             <span>Paper logic</span>
-            <strong>Page fields accept both single numbers and ranges.</strong>
+            <strong>Page fields accept ranges, and QR downloads can export as PDF or PNG.</strong>
         </div>
     </div>
 </header>
@@ -75,13 +79,13 @@
             <span>1. Select tool</span>
             <span>2. Add files</span>
             <span>3. Name output</span>
-            <span>4. Download PDF</span>
+            <span>4. Download result</span>
         </div>
     </article>
     <article class="stat-card">
         <p class="eyebrow">Built for PDFs</p>
-        <h2>Five focused actions</h2>
-        <p>Merge, delete, extract, append, and convert without leaving the same screen.</p>
+        <h2>Seven focused actions</h2>
+        <p>Merge, delete, extract, append, convert, and generate QR exports without leaving the same screen.</p>
     </article>
     <article class="stat-card media-card">
         <p class="eyebrow">Workbench Mood</p>
@@ -105,7 +109,7 @@
             <h2>Choose a document action and finish it in one pass.</h2>
             <p>
                 The tools below are designed like a modern desk console with classic colour styling.
-                Upload your file set, make one focused edit, and export the finished PDF right away.
+                Upload your file set, make one focused edit, and export the finished document or QR file right away.
             </p>
         </div>
 
@@ -115,6 +119,8 @@
             <button class="tab-button" type="button" data-tab-target="extract">Extract Pages</button>
             <button class="tab-button" type="button" data-tab-target="add">Add Pages</button>
             <button class="tab-button" type="button" data-tab-target="images">Images to PDF</button>
+            <button class="tab-button" type="button" data-tab-target="qr">QR Generator</button>
+            <button class="tab-button" type="button" data-tab-target="convert">Convert Files</button>
         </div>
 
         <article class="tool-card" data-tool-panel="merge">
@@ -288,15 +294,81 @@
                 <button class="submit-button" type="submit" data-loading-label="Converting images...">Convert to PDF</button>
             </form>
         </article>
+
+        <article class="tool-card" data-tool-panel="qr">
+            <div class="tool-copy">
+                <p class="tool-label">QR Generator</p>
+                <h3>Create a QR code as a printable sheet or a PNG image.</h3>
+                <p>
+                    Useful for payment links, event check-ins, Wi-Fi sharing, menus,
+                    contact details, and any short text or URL you want people to scan fast.
+                </p>
+                <ul class="detail-list">
+                    <li>Paste text or a URL to encode.</li>
+                    <li>Download a PDF sheet or a PNG image.</li>
+                    <li>Keep the app focused on document-ready outputs.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('qr_code_route') }}" method="post">
+                <label class="field-group">
+                    <span>Text or URL</span>
+                    <textarea name="qr_text" rows="5" placeholder="https://example.com/order/123" required></textarea>
+                </label>
+                <label class="field-group">
+                    <span>Download format</span>
+                    <select name="output_format">
+                        <option value="pdf">PDF sheet</option>
+                        <option value="png">PNG image</option>
+                    </select>
+                </label>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="qr-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit" data-loading-label="Generating QR code...">Generate QR download</button>
+            </form>
+        </article>
+
+        <article class="tool-card" data-tool-panel="convert">
+            <div class="tool-copy">
+                <p class="tool-label">Convert Files</p>
+                <h3>Turn supported files into a clean PDF.</h3>
+                <p>
+                    This keeps the app honest and safe: it is not an any-to-any converter,
+                    but it can package common image and text-like files into PDF output.
+                </p>
+                <ul class="detail-list">
+                    <li>Upload one supported file.</li>
+                    <li>Works with images plus TXT, MD, CSV, JSON, LOG, PY, YAML, and more.</li>
+                    <li>Download a PDF version ready to share.</li>
+                </ul>
+            </div>
+            <form class="tool-form" action="{{ url_for('convert_file_route') }}" method="post" enctype="multipart/form-data">
+                <div class="field-group">
+                    <span>Supported file</span>
+                    <label class="file-picker" data-file-picker>
+                        <input type="file" name="source_file" accept=".png,.jpg,.jpeg,.bmp,.gif,.tif,.tiff,.webp,.txt,.md,.csv,.json,.log,.py,.yaml,.yml,.ini,.cfg,.html,.css,.js,.ts,.xml" required>
+                        <span class="file-picker-title">Choose a supported file to convert</span>
+                        <span class="file-picker-text" data-file-summary>No file selected yet.</span>
+                    </label>
+                    <span class="field-help">Supported today: common images and text-style files. This deliberately avoids unsafe any-to-any conversion claims.</span>
+                </div>
+                <label class="field-group">
+                    <span>Output file name</span>
+                    <input type="text" name="output_name" placeholder="converted-classic.pdf">
+                </label>
+                <button class="submit-button" type="submit" data-loading-label="Converting file...">Convert to PDF</button>
+            </form>
+        </article>
     </section>
 
     <aside class="info-panel">
         <div class="info-card">
             <p class="eyebrow">Why it fits PDFs</p>
-            <h2>A document site, not a generic dashboard.</h2>
+            <h2>A document studio, not a generic converter.</h2>
             <p>
                 The interface now leans into classic document-room colours, sheet-like panels,
-                control-bar tabs, and a PDF-first workbench structure while staying modern to use.
+                control-bar tabs, QR-ready exports, and a PDF-first workbench structure while staying modern to use.
             </p>
         </div>
         <div class="info-card">
@@ -306,13 +378,14 @@
                 <li>Scanned applications and document cleanup.</li>
                 <li>Invoice packs, receipts, and supporting pages.</li>
                 <li>Image batches that need PDF export.</li>
+                <li>QR sheets for payment links, forms, and events.</li>
             </ul>
         </div>
         <div class="info-card note-card">
             <p class="eyebrow">Retro + modern</p>
             <p>
                 Classic navy, paper cream, muted red, and brass accents bring the retro touch,
-                while the tabbed controls and structured work area keep the experience modern.
+                while the tabbed controls and structured work area keep the experience modern and focused.
             </p>
         </div>
     </aside>

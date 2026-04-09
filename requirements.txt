@@ -2,3 +2,4 @@ Flask>=3.0,<4.0
 PyPDF2>=3.0.0
 Pillow>=10.0.0
 gunicorn>=23.0.0
+qrcode>=8.0.0

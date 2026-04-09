@@ -3,25 +3,61 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
+import qrcode
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
+TEXT_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".log",
+    ".py",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
+    ".html",
+    ".css",
+    ".js",
+    ".ts",
+    ".xml",
+}
+CONVERTIBLE_EXTENSIONS = IMAGE_EXTENSIONS | TEXT_EXTENSIONS
+PAGE_SIZE = (1240, 1754)
+PAGE_MARGIN_X = 92
+PAGE_MARGIN_Y = 88
+TEXT_FILE_SIZE_LIMIT = 512 * 1024
 
 
 class PdfToolError(Exception):
     """Raised when the PDF utilities receive invalid input."""
 
 
-def ensure_pdf_filename(name: str | None, fallback: str = "document.pdf") -> str:
+def ensure_download_filename(
+    name: str | None,
+    fallback: str,
+    required_extension: str,
+) -> str:
     cleaned = (name or "").strip().strip('"')
     safe_name = Path(cleaned).name if cleaned else fallback
 
-    if not safe_name.lower().endswith(".pdf"):
-        safe_name += ".pdf"
+    if not safe_name:
+        safe_name = fallback
+
+    required_extension = required_extension.lower()
+    if Path(safe_name).suffix.lower() != required_extension:
+        stem = Path(safe_name).stem or Path(fallback).stem or "download"
+        safe_name = f"{stem}{required_extension}"
 
     return safe_name
+
+
+def ensure_pdf_filename(name: str | None, fallback: str = "document.pdf") -> str:
+    return ensure_download_filename(name, fallback, ".pdf")
 
 
 def get_existing_path(raw_path: str) -> Path:
@@ -186,6 +222,250 @@ def images_to_pdf(image_paths: Iterable[str | Path], output_path: str | Path) ->
     finally:
         for prepared_image in prepared_images:
             prepared_image.close()
+
+
+def generate_qr_code(data: str, output_path: str | Path) -> Path:
+    content = data.strip()
+    if not content:
+        raise PdfToolError("Enter text or a URL to turn into a QR code.")
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(content)
+    qr.make(fit=True)
+
+    qr_image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    try:
+        if output.suffix.lower() == ".png":
+            qr_image.save(output, format="PNG")
+            return output
+
+        if output.suffix.lower() != ".pdf":
+            raise PdfToolError("QR downloads currently support only PDF or PNG.")
+
+        sheet = Image.new("RGB", PAGE_SIZE, "white")
+        draw = ImageDraw.Draw(sheet)
+        title_font = _load_font(42)
+        subtitle_font = _load_font(22)
+        body_font = _load_font(24)
+
+        draw.text((PAGE_MARGIN_X, 120), "QR Code Sheet", fill=(32, 45, 60), font=title_font)
+        draw.text(
+            (PAGE_MARGIN_X, 188),
+            "Scan this code or share the text below.",
+            fill=(87, 73, 57),
+            font=subtitle_font,
+        )
+
+        qr_copy = qr_image.copy()
+        qr_copy.thumbnail((760, 760))
+        qr_x = (PAGE_SIZE[0] - qr_copy.width) // 2
+        qr_y = 300
+        sheet.paste(qr_copy, (qr_x, qr_y))
+
+        footer_top = qr_y + qr_copy.height + 72
+        wrapped_lines = _wrap_text_block(content, body_font, PAGE_SIZE[0] - (PAGE_MARGIN_X * 2))
+        if len(wrapped_lines) > 6:
+            wrapped_lines = wrapped_lines[:5] + ["..."]
+
+        draw.text((PAGE_MARGIN_X, footer_top), "Encoded text", fill=(137, 72, 59), font=subtitle_font)
+        line_height = _line_height(body_font, 10)
+        text_y = footer_top + 42
+        for line in wrapped_lines:
+            draw.text((PAGE_MARGIN_X, text_y), line, fill=(32, 45, 60), font=body_font)
+            text_y += line_height
+
+        sheet.save(output, "PDF", resolution=150.0)
+        qr_copy.close()
+        sheet.close()
+        return output
+    finally:
+        qr_image.close()
+
+
+def convert_supported_file_to_pdf(source_path: str | Path, output_path: str | Path) -> Path:
+    source = Path(source_path)
+    suffix = source.suffix.lower()
+
+    if suffix in IMAGE_EXTENSIONS:
+        return images_to_pdf([source], output_path)
+
+    if suffix in TEXT_EXTENSIONS:
+        return text_to_pdf(source, output_path)
+
+    raise PdfToolError(
+        "This converter supports common image files and text-like files such as TXT, MD, CSV, and JSON."
+    )
+
+
+def text_to_pdf(source_path: str | Path, output_path: str | Path) -> Path:
+    source = Path(source_path)
+    content = _read_text_file(source)
+    normalized = content.replace("\r\n", "\n").replace("\r", "\n").expandtabs(4)
+    logical_lines = normalized.split("\n")
+
+    body_font = _load_font(24)
+    title_font = _load_font(34)
+    subtitle_font = _load_font(20)
+    page_width, page_height = PAGE_SIZE
+    usable_width = page_width - (PAGE_MARGIN_X * 2)
+    line_height = _line_height(body_font, 10)
+    header_height = _line_height(title_font, 16) + _line_height(subtitle_font, 8) + 14
+    footer_height = _line_height(subtitle_font, 0) + 10
+    lines_per_page = max(1, (page_height - (PAGE_MARGIN_Y * 2) - header_height - footer_height) // line_height)
+
+    wrapped_lines: list[str] = []
+    for logical_line in logical_lines:
+        wrapped_lines.extend(_wrap_text_block(logical_line, body_font, usable_width))
+
+    if not wrapped_lines:
+        wrapped_lines = ["[This file is empty.]"]
+
+    pages: list[Image.Image] = []
+    try:
+        total_pages = max(1, (len(wrapped_lines) + lines_per_page - 1) // lines_per_page)
+        for page_index in range(total_pages):
+            page = Image.new("RGB", PAGE_SIZE, "white")
+            draw = ImageDraw.Draw(page)
+
+            draw.text((PAGE_MARGIN_X, PAGE_MARGIN_Y), source.name, fill=(32, 45, 60), font=title_font)
+            draw.text(
+                (PAGE_MARGIN_X, PAGE_MARGIN_Y + _line_height(title_font, 16)),
+                f"Converted into PDF from a supported text file",
+                fill=(87, 73, 57),
+                font=subtitle_font,
+            )
+
+            draw.line(
+                (
+                    PAGE_MARGIN_X,
+                    PAGE_MARGIN_Y + header_height - 8,
+                    page_width - PAGE_MARGIN_X,
+                    PAGE_MARGIN_Y + header_height - 8,
+                ),
+                fill=(212, 198, 171),
+                width=2,
+            )
+
+            start = page_index * lines_per_page
+            end = start + lines_per_page
+            text_y = PAGE_MARGIN_Y + header_height + 10
+            for line in wrapped_lines[start:end]:
+                draw.text((PAGE_MARGIN_X, text_y), line, fill=(32, 45, 60), font=body_font)
+                text_y += line_height
+
+            footer_label = f"Page {page_index + 1} of {total_pages}"
+            footer_width = _text_width(footer_label, subtitle_font)
+            draw.text(
+                (page_width - PAGE_MARGIN_X - footer_width, page_height - PAGE_MARGIN_Y),
+                footer_label,
+                fill=(87, 73, 57),
+                font=subtitle_font,
+            )
+
+            pages.append(page)
+
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        pages[0].save(output, "PDF", save_all=True, append_images=pages[1:], resolution=150.0)
+        return output
+    finally:
+        for page in pages:
+            page.close()
+
+
+def _read_text_file(path: Path) -> str:
+    raw_bytes = path.read_bytes()
+    if len(raw_bytes) > TEXT_FILE_SIZE_LIMIT:
+        raise PdfToolError("Text conversion works best for files up to 512 KB.")
+
+    for encoding in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            text = raw_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+
+        if "\x00" in text:
+            continue
+        return text
+
+    raise PdfToolError("This file does not look like readable text.")
+
+
+def _load_font(size: int) -> ImageFont.ImageFont:
+    for font_name in (
+        "DejaVuSansMono.ttf",
+        "DejaVuSans.ttf",
+        "LiberationMono-Regular.ttf",
+        "LiberationSans-Regular.ttf",
+        "arial.ttf",
+    ):
+        try:
+            return ImageFont.truetype(font_name, size)
+        except OSError:
+            continue
+
+    return ImageFont.load_default()
+
+
+def _line_height(font: ImageFont.ImageFont, padding: int) -> int:
+    bbox = font.getbbox("Ag")
+    return (bbox[3] - bbox[1]) + padding
+
+
+def _text_width(text: str, font: ImageFont.ImageFont) -> int:
+    if not text:
+        return 0
+
+    bbox = font.getbbox(text)
+    return bbox[2] - bbox[0]
+
+
+def _wrap_text_block(text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    if text == "":
+        return [""]
+
+    if _text_width(text, font) <= max_width:
+        return [text]
+
+    wrapped: list[str] = []
+    start = 0
+    while start < len(text):
+        end = start
+        last_break = None
+
+        while end < len(text):
+            candidate = text[start : end + 1]
+            if _text_width(candidate, font) <= max_width:
+                if text[end].isspace():
+                    last_break = end
+                end += 1
+                continue
+            break
+
+        if end >= len(text):
+            wrapped.append(text[start:].rstrip())
+            break
+
+        split_at = last_break + 1 if last_break is not None and last_break >= start else end
+        segment = text[start:split_at].rstrip()
+        if not segment:
+            segment = text[start:end].rstrip() or text[start:end]
+
+        wrapped.append(segment)
+        start = split_at
+        while start < len(text) and text[start].isspace():
+            start += 1
+
+    return wrapped or [text]
 
 
 def _prompt_path(message: str) -> Path:

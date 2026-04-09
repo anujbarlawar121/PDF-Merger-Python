@@ -20,11 +20,15 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from hello_pdf import (
+    CONVERTIBLE_EXTENSIONS,
     PdfToolError,
     add_pages,
+    convert_supported_file_to_pdf,
     delete_pages,
+    ensure_download_filename,
     ensure_pdf_filename,
     extract_pages,
+    generate_qr_code,
     get_pdf_page_count,
     images_to_pdf,
     merge_pdfs,
@@ -150,6 +154,57 @@ def create_app() -> Flask:
                 "Something went wrong while converting the images. Please try JPG or PNG files.",
             )
 
+    @app.post("/qr-code")
+    def qr_code_route():
+        try:
+            workspace = _make_workspace()
+            qr_content = request.form.get("qr_text", "")
+            output_format = (request.form.get("output_format") or "pdf").strip().lower()
+            if output_format not in {"pdf", "png"}:
+                raise PdfToolError("Choose PDF or PNG for the QR download format.")
+
+            default_name = f"qr-classic.{output_format}"
+            output_name = ensure_download_filename(
+                request.form.get("output_name"),
+                default_name,
+                f".{output_format}",
+            )
+            output_path = workspace / output_name
+            generate_qr_code(qr_content, output_path)
+            return _download_file(
+                output_path,
+                output_name,
+                mimetype="application/pdf" if output_format == "pdf" else "image/png",
+            )
+        except PdfToolError as error:
+            return _redirect_with_error("qr", str(error))
+        except Exception as error:
+            app.logger.exception("Generate QR code failed: %s", error)
+            return _redirect_with_error("qr", "Something went wrong while generating the QR code.")
+
+    @app.post("/convert-file")
+    def convert_file_route():
+        try:
+            workspace = _make_workspace()
+            upload = _require_upload(
+                request.files.get("source_file"),
+                CONVERTIBLE_EXTENSIONS,
+                "a supported file to convert",
+            )
+            source_path = _save_upload(upload, workspace, CONVERTIBLE_EXTENSIONS)
+            output_name = ensure_pdf_filename(request.form.get("output_name"), "converted-classic.pdf")
+            output_path = workspace / output_name
+            convert_supported_file_to_pdf(source_path, output_path)
+            return _download_file(output_path, output_name)
+        except PdfToolError as error:
+            return _redirect_with_error("convert", str(error))
+        except Exception as error:
+            app.logger.exception("Convert file failed: %s", error)
+            return _redirect_with_error(
+                "convert",
+                "Something went wrong while converting the file. Try an image, TXT, MD, CSV, or JSON file.",
+            )
+
     @app.errorhandler(413)
     def request_entity_too_large(_error):
         flash("The upload is too large. Keep the total request under 64 MB.", "error")
@@ -189,12 +244,12 @@ def _save_upload(upload, workspace: Path, allowed_extensions: set[str]) -> Path:
     return destination
 
 
-def _download_file(path: Path, download_name: str):
+def _download_file(path: Path, download_name: str, mimetype: str = "application/pdf"):
     return send_file(
         BytesIO(path.read_bytes()),
         as_attachment=True,
         download_name=download_name,
-        mimetype="application/pdf",
+        mimetype=mimetype,
     )
 
 
