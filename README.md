@@ -31,7 +31,7 @@ python app.py
 4. Open `http://127.0.0.1:5000`
 
 
-## Notes
+## Notes :
 
 - Uploads are handled in temporary folders under `tmp/`.
 - Page fields accept comma-separated page numbers and ranges such as `1, 3-5, 8`.
